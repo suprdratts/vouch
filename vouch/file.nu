@@ -48,6 +48,30 @@ export def parse-handle [handle: string] {
   }
 }
 
+# Initialize a new VOUCHED file at the given path with starter content.
+#
+# Creates parent directories if needed. The file includes an explanatory
+# header pointing to github.com/mitchellh/vouch for details.
+export def init-file [
+  path: path  # Path where the VOUCHED file should be created
+] {
+  let parent = ($path | path dirname)
+  if not ($parent | path exists) {
+    mkdir $parent
+  }
+
+  "# Vouched contributors for this project.
+#
+# See https://github.com/mitchellh/vouch for details.
+#
+# Syntax:
+#   - One handle per line (without @), sorted alphabetically.
+#   - Optional platform prefix: platform:username (e.g., github:user).
+#   - Denounce with minus prefix: -username or -platform:username.
+#   - Optional details after a space following the handle.
+" | save $path
+}
+
 # Find the default VOUCHED file by checking common locations.
 #
 # Checks for VOUCHED.td in the current directory first, then .github/VOUCHED.td.

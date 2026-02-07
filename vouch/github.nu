@@ -1,6 +1,6 @@
 # GitHub API utilities and CLI commands for Nu scripts
 
-use file.nu [default-path, "from td", open-file, "to td"]
+use file.nu [default-path, "from td", init-file, open-file, "to td"]
 use lib.nu [add-user, check-user, denounce-user]
 
 # Check if a PR author is a vouched contributor.
@@ -66,9 +66,12 @@ export def gh-check-pr [
     return
   }
 
-  let file_data = api "get" $"/repos/($owner)/($repo_name)/contents/($vouched_file)?ref=($default_branch)"
-  let content = $file_data.content | decode base64 | decode utf-8
-  let records = $content | from td
+  let records = try {
+    let file_data = api "get" $"/repos/($owner)/($repo_name)/contents/($vouched_file)?ref=($default_branch)"
+    $file_data.content | decode base64 | decode utf-8 | from td
+  } catch {
+    []
+  }
   let status = $records | check-user $pr_author --default-platform github
 
   if $status == "vouched" {
@@ -195,9 +198,10 @@ export def gh-manage-by-issue [
   let file = if ($vouched_file | is-empty) {
     let default = default-path
     if ($default | is-empty) {
-      error make { msg: "no VOUCHED file found" }
+      ".github/VOUCHED.td"
+    } else {
+      $default
     }
-    $default
   } else {
     $vouched_file
   }
@@ -243,6 +247,10 @@ export def gh-manage-by-issue [
     print $"($commenter) does not have write access"
     print "unchanged"
     return
+  }
+
+  if not ($file | path exists) {
+    init-file $file
   }
 
   let records = open-file $file

@@ -1,6 +1,6 @@
 use std/assert
 
-use ../vouch/file.nu ["from td", "to td", parse-handle]
+use ../vouch/file.nu ["from td", init-file, "to td", parse-handle]
 
 # --- from td ---
 
@@ -124,6 +124,26 @@ export def "test parse-handle with platform" [] {
   let result = parse-handle "github:mitchellh"
   assert equal $result.platform "github"
   assert equal $result.username "mitchellh"
+}
+
+# --- init-file ---
+
+export def "test init-file creates file with header" [] {
+  let dir = mktemp -d
+  let file = $dir | path join ".github" "VOUCHED.td"
+  try {
+    init-file $file
+    assert ($file | path exists)
+    let content = open --raw $file
+    assert ($content | str contains "https://github.com/mitchellh/vouch")
+    let records = $content | from td
+    let entries = $records | where { |r| $r.type == "vouch" or $r.type == "denounce" }
+    assert equal ($entries | length) 0
+  } catch { |e|
+    rm -rf $dir
+    error make { msg: $e.msg }
+  }
+  rm -rf $dir
 }
 
 export def "test parse-handle normalizes case" [] {
