@@ -52,7 +52,8 @@ runs:
     - id: run
       shell: nu {0}
       run: |
-        use $"($env.GITHUB_ACTION_PATH)/../../vouch" *
+        const vouch_mod = (path self | path dirname | path join ../../vouch)
+        use $vouch_mod *
 
         let vouch_kw = "${{ inputs.vouch-keyword }}" | split row "," | each { str trim } | where { $in | is-not-empty }
         let denounce_kw = "${{ inputs.denounce-keyword }}" | split row "," | each { str trim } | where { $in | is-not-empty }
