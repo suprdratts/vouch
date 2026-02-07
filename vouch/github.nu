@@ -330,8 +330,8 @@ def api [
 
   match $method {
     "get" => { http get $url --headers $headers },
-    "post" => { http post $url --headers $headers $body },
-    "patch" => { http patch $url --headers $headers $body },
+    "post" => { http post $url --headers $headers --content-type application/json $body },
+    "patch" => { http patch $url --headers $headers --content-type application/json $body },
     _ => { error make { msg: $"Unsupported HTTP method: ($method)" } }
   }
 }
