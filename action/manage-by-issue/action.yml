@@ -8,9 +8,6 @@ inputs:
   issue-id:
     description: GitHub issue number.
     required: true
-  repo:
-    description: Repository in "owner/repo" format.
-    required: true
   allow-denounce:
     description: Enable "denounce" handling to denounce users.
     required: false
@@ -23,6 +20,10 @@ inputs:
     description: Print what would happen without making changes.
     required: false
     default: "false"
+  repo:
+    description: Repository in "owner/repo" format (default: current repository).
+    required: false
+    default: ""
   vouched-file:
     description: Path to the vouched contributors file (empty = auto-detect).
     required: false
@@ -48,7 +49,7 @@ runs:
         let output = (gh-manage-by-issue
           ${{ inputs.issue-id }}
           ${{ inputs.comment-id }}
-          --repo "${{ inputs.repo }}"
+          --repo "${{ inputs.repo || github.repository }}"
           --vouched-file "${{ inputs.vouched-file }}"
           --allow-vouch=${{ inputs.allow-vouch }}
           --allow-denounce=${{ inputs.allow-denounce }}
