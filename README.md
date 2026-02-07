@@ -6,8 +6,8 @@ configurable to the project to enforce). People can also be explicitly
 **denounced** to block them from interacting with the project.
 
 The implementation is generic and can be used by any project on any code forge,
-but we provide GitHub integration out of the box, including a GitHub action
-provided by this repository.
+but we provide **GitHub integration** out of the box via GitHub actions
+and the CLI.
 
 The vouch list is maintained in a single flat file using a minimal format
 that can be trivially parsed using standard POSIX tools and any programming
@@ -40,36 +40,29 @@ trusted individuals (active members of the community in any form). So,
 let's move to an explicit trust model where trusted individuals can vouch
 for others, and those vouched individuals can then contribute.
 
-## Vouched File Format
+## Usage
 
-The vouch list is stored in a `.td` file. See
-[VOUCHED.example.td](VOUCHED.example.td) for an example. The file is
-looked up at `VOUCHED.td` or `.github/VOUCHED.td` by default.
+### GitHub
 
-```
-# Comments start with #
-username
-platform:username
--platform:denounced-user
--platform:denounced-user reason for denouncement
-```
+Integrating vouch into a GitHub project is easy with the
+[provided GitHub Actions](https://github.com/mitchellh/vouch/tree/main/action).
+By choosing which actions to use, you can fully control how
+users are vouched and what they can or can't do.
 
-- One handle per line (without `@`), sorted alphabetically.
-- Optionally specify a platform prefix: `platform:username` (e.g., `github:mitchellh`).
-- Denounce a user by prefixing with `-`.
-- Optionally add details after a space following the handle.
+Below is a list of the actions and a brief description of their function.
+See the linked README in the action directory for full usage details.
 
-The `from td` and `to td` commands are exported by the module, so
-Nushell's `open` command works natively with `.td` files to decode
-into structured tables and encode back to the file format with
-comments and whitespace preserved.
+| Action                                              | Trigger               | Description                                                                                                                                                       |
+| --------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [check-pr](action/check-pr/README.md)               | `pull_request_target` | Check if a PR author is vouched. Bots and collaborators with write access are automatically allowed. Optionally auto-close PRs from unvouched or denounced users. |
+| [manage-by-issue](action/manage-by-issue/README.md) | `issue_comment`       | Let collaborators vouch or denounce users via issue comments. Updates the vouched file and commits the change.                                                    |
 
-## CLI Usage
+### CLI
 
 The CLI is implemented as a Nushell module and only requires
 Nushell to run. There are no other external dependencies.
 
-### Integrated Help
+#### Integrated Help
 
 This is Nushell, so you can get help on any command:
 
@@ -82,7 +75,7 @@ help gh-check-pr
 help gh-manage-by-issue
 ```
 
-### Local Commands
+#### Local Commands
 
 **Check a user's vouch status:**
 
@@ -115,7 +108,7 @@ vouch denounce badactor --reason "Submitted AI slop"
 vouch denounce badactor --write
 ```
 
-### GitHub Integration
+#### GitHub Integration
 
 Requires the `GITHUB_TOKEN` environment variable. If not set and `gh`
 is available, the token from `gh auth token` is used.
@@ -159,7 +152,7 @@ Keywords are customizable via `--vouch-keyword` and `--denounce-keyword`.
 
 Outputs status: `vouched`, `denounced`, or `unchanged`.
 
-## Library Usage
+### Library
 
 The module also exports a `lib` submodule for scripting:
 
@@ -172,3 +165,27 @@ $records | add-user "newuser"                                # returns updated t
 $records | denounce-user "badactor" "reason"                 # returns updated table
 $records | remove-user "olduser"                             # returns updated table
 ```
+
+## Vouched File Format
+
+The vouch list is stored in a `.td` file. See
+[VOUCHED.example.td](VOUCHED.example.td) for an example. The file is
+looked up at `VOUCHED.td` or `.github/VOUCHED.td` by default.
+
+```
+# Comments start with #
+username
+platform:username
+-platform:denounced-user
+-platform:denounced-user reason for denouncement
+```
+
+- One handle per line (without `@`), sorted alphabetically.
+- Optionally specify a platform prefix: `platform:username` (e.g., `github:mitchellh`).
+- Denounce a user by prefixing with `-`.
+- Optionally add details after a space following the handle.
+
+The `from td` and `to td` commands are exported by the module, so
+Nushell's `open` command works natively with `.td` files to decode
+into structured tables and encode back to the file format with
+comments and whitespace preserved.

@@ -6,6 +6,7 @@ A file for [guiding coding agents](https://agents.md/).
 
 - See `VOUCHED.example` for an example vouch file.
 - Check formatting with `prettier` after every file change.
+  - `prettier` is available via Nix if using Nix
 
 ## Nu
 
