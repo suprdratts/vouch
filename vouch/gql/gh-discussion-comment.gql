@@ -6,13 +6,17 @@ query discussionComment(
 ) {
   repository(owner: $owner, name: $repo_name) {
     discussion(number: $discussion_number) {
-      author { login }
+      author {
+        login
+      }
     }
   }
   node(id: $comment_node_id) {
     ... on DiscussionComment {
       body
-      author { login }
+      author {
+        login
+      }
     }
   }
 }
