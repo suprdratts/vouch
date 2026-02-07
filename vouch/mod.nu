@@ -12,6 +12,7 @@ export def main [] {
   print ""
   print "GitHub integration:"
   print "  gh-check-pr         Check if a PR author is a vouched contributor"
+  print "  gh-manage-by-discussion Manage contributor status via discussion comment"
   print "  gh-manage-by-issue  Manage contributor status via issue comment"
 }
 
@@ -26,6 +27,7 @@ export use cli.nu [
 # The GitHub integration commands.
 export use github.nu [
   gh-check-pr
+  gh-manage-by-discussion
   gh-manage-by-issue
 ]
 
