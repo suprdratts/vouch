@@ -196,3 +196,12 @@ The `from td` and `to td` commands are exported by the module, so
 Nushell's `open` command works natively with `.td` files to decode
 into structured tables and encode back to the file format with
 comments and whitespace preserved.
+
+> [!NOTE]
+>
+> **What is `.td`?** This stands for "Trustdown," a play on the
+> word "Markdown." I intend to formalize a specification for trust
+> lists (with no opinion on how they're created or used) so that software
+> systems like this Vouch project and others can coordinate with each
+> other. I'm not ready to publish a specification until vouch itself
+> stabilizes usage more.
