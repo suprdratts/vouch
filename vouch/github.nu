@@ -218,10 +218,12 @@ export def gh-manage-by-issue [
   let vouch_keywords = if ($vouch_keyword | is-empty) { ["vouch"] } else { $vouch_keyword }
   let denounce_keywords = if ($denounce_keyword | is-empty) { ["denounce"] } else { $denounce_keyword }
 
-  let vouch_pattern = $"(?i)^\\s*($vouch_keywords | str join '|')\\b"
+  let vouch_joined = ($vouch_keywords | str join '|')
+  let vouch_pattern = '(?i)^\s*(' ++ $vouch_joined ++ ')\b'
   let is_lgtm = $allow_vouch and ($comment_body | parse -r $vouch_pattern | is-not-empty)
 
-  let denounce_pattern = $"(?i)^\\s*($denounce_keywords | str join '|')(?:\\s+(\\S+))?(?:\\s+(.+))?$"
+  let denounce_joined = ($denounce_keywords | str join '|')
+  let denounce_pattern = '(?i)^\s*(' ++ $denounce_joined ++ ')(?:\s+(\S+))?(?:\s+(.+))?$'
   let denounce_match = if $allow_denounce {
     $comment_body | parse -r $denounce_pattern
   } else {
