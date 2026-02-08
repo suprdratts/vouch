@@ -7,7 +7,6 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     flake-utils,
     ...
@@ -16,15 +15,12 @@
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
       in {
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [
+        devShells.default = pkgs.mkShellNoCC {
+          packages = with pkgs; [
             nodePackages.prettier
             nushell
           ];
         };
-
-        # For compatibility with older versions of the `nix` binary
-        devShell = self.devShells.${system}.default;
       }
     );
 }
