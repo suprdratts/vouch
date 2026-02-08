@@ -33,7 +33,7 @@ export def main [
   for entry in $grouped {
     let target = ^git rev-parse $entry.tag | str trim
     let existing = try {
-      ^git rev-parse $entry.major | str trim
+      ^git rev-parse $entry.major err> /dev/null | str trim
     } catch {
       null
     }
@@ -44,7 +44,8 @@ export def main [
     }
 
     if $dry_run {
-      print $"(char lparen)dry-run(char rparen) Would update ($entry.major) -> ($entry.tag) \(($target))"
+      print $"(char lparen)dry-run(char rparen) git tag -f ($entry.major) ($target)"
+      print $"(char lparen)dry-run(char rparen) git push origin ($entry.major) --force"
       continue
     }
 
