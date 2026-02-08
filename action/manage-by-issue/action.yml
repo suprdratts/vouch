@@ -109,7 +109,7 @@ runs:
         git add $vouched_file
         let url = $"($env.GITHUB_SERVER_URL)/${{ inputs.repo || github.repository }}/issues/${{ inputs.issue-id }}#issuecomment-${{ inputs.comment-id }}"
         git commit -m $"Update VOUCHED list\n\n($url)"
-        
+
         let attempts = 0
         let max_attempts = 5
         while $attempts < $max_attempts {
