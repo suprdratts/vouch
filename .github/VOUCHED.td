@@ -11,6 +11,7 @@ alexhraber
 ditherdude
 doprz
 faukah
+pavelzw
 r44vc0rp
 rickhanlonii
 suprstarrd
