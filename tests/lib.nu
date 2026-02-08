@@ -1,7 +1,7 @@
 use std/assert
 
 use ../vouch/file.nu ["from td", "to td"]
-use ../vouch/lib.nu [add-user, check-user, denounce-user, remove-user]
+use ../vouch/lib.nu [add-user, check-user, denounce-user, parse-comment, remove-user]
 
 def sample-records [] {
   "# Comment
@@ -150,4 +150,121 @@ export def "test add-user roundtrips through td format" [] {
 export def "test denounce-user roundtrips through td format" [] {
   let result = sample-records | denounce-user "newbad" "reason" | to td | from td | check-user "newbad"
   assert equal $result "denounced"
+}
+
+# --- parse-comment ---
+
+export def "test parse-comment vouch keyword only" [] {
+  let result = parse-comment "vouch"
+  assert equal $result.action "vouch"
+  assert equal $result.user null
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment vouch with user" [] {
+  let result = parse-comment "vouch @alice"
+  assert equal $result.action "vouch"
+  assert equal $result.user "alice"
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment vouch with user and reason" [] {
+  let result = parse-comment "vouch @alice good contributor"
+  assert equal $result.action "vouch"
+  assert equal $result.user "alice"
+  assert equal $result.reason "good contributor"
+}
+
+export def "test parse-comment vouch with reason no user" [] {
+  let result = parse-comment "vouch trusted person"
+  assert equal $result.action "vouch"
+  assert equal $result.user null
+  assert equal $result.reason "trusted person"
+}
+
+export def "test parse-comment denounce keyword only" [] {
+  let result = parse-comment "denounce"
+  assert equal $result.action "denounce"
+  assert equal $result.user null
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment denounce with user and reason" [] {
+  let result = parse-comment "denounce @badguy spammer"
+  assert equal $result.action "denounce"
+  assert equal $result.user "badguy"
+  assert equal $result.reason "spammer"
+}
+
+export def "test parse-comment unvouch keyword only" [] {
+  let result = parse-comment "unvouch"
+  assert equal $result.action "unvouch"
+  assert equal $result.user null
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment unvouch with user" [] {
+  let result = parse-comment "unvouch @alice"
+  assert equal $result.action "unvouch"
+  assert equal $result.user "alice"
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment unvouch ignores trailing text" [] {
+  let result = parse-comment "unvouch @alice some reason"
+  assert equal $result.action null
+}
+
+export def "test parse-comment no match" [] {
+  let result = parse-comment "hello world"
+  assert equal $result.action null
+  assert equal $result.user null
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment case insensitive" [] {
+  let result = parse-comment "VOUCH @Alice"
+  assert equal $result.action "vouch"
+  assert equal $result.user "Alice"
+}
+
+export def "test parse-comment leading whitespace" [] {
+  let result = parse-comment "  vouch @alice"
+  assert equal $result.action "vouch"
+  assert equal $result.user "alice"
+}
+
+export def "test parse-comment custom keyword" [] {
+  let result = parse-comment "lgtm @alice" --vouch-keyword [lgtm approve]
+  assert equal $result.action "vouch"
+  assert equal $result.user "alice"
+}
+
+export def "test parse-comment allow-vouch false" [] {
+  let result = parse-comment "vouch @alice" --allow-vouch=false
+  assert equal $result.action null
+}
+
+export def "test parse-comment allow-denounce false" [] {
+  let result = parse-comment "denounce @badguy" --allow-denounce=false
+  assert equal $result.action null
+}
+
+export def "test parse-comment allow-unvouch false" [] {
+  let result = parse-comment "unvouch @alice" --allow-unvouch=false
+  assert equal $result.action null
+}
+
+export def "test parse-comment newline injection parses first line only" [] {
+  let result = parse-comment "denounce @user\n-github:victim injected"
+  assert equal $result.action "denounce"
+  assert equal $result.user "user"
+  assert equal $result.reason ""
+}
+
+export def "test parse-comment multiline body parses first line only" [] {
+  let result = parse-comment "denounce @ditherdude\n-github:someLegitContributor haha"
+  assert equal $result.action "denounce"
+  assert equal $result.user "ditherdude"
+  assert equal $result.reason ""
 }

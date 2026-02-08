@@ -114,6 +114,83 @@ export def remove-user [
   }
 }
 
+# Parse a comment body to detect a vouch, denounce, or unvouch action.
+#
+# Returns a record with:
+#   - action: "vouch", "denounce", "unvouch", or null if no match
+#   - user: target username (or null if not specified)
+#   - reason: reason string (or "" if not specified; always "" for unvouch)
+#
+# Examples:
+#
+#   parse-comment "vouch"
+#   # => {action: vouch, user: null, reason: ""}
+#
+#   parse-comment "vouch @alice good work"
+#   # => {action: vouch, user: alice, reason: "good work"}
+#
+#   parse-comment "denounce @badguy spammer"
+#   # => {action: denounce, user: badguy, reason: spammer}
+#
+#   parse-comment "random text"
+#   # => {action: null, user: null, reason: ""}
+#
+export def parse-comment [
+  body: string,                                     # Comment body to parse
+  --vouch-keyword: list<string> = ["vouch"],        # Keywords that trigger vouching
+  --denounce-keyword: list<string> = ["denounce"],  # Keywords that trigger denouncing
+  --unvouch-keyword: list<string> = ["unvouch"],    # Keywords that trigger unvouching
+  --allow-vouch = true,                             # Enable vouch matching
+  --allow-denounce = true,                          # Enable denounce matching
+  --allow-unvouch = true,                           # Enable unvouch matching
+]: nothing -> record {
+  let trimmed = ($body | str trim | lines | first | str trim)
+
+  if $allow_vouch {
+    let joined = ($vouch_keyword | str join '|')
+    let pattern = '(?i)^[ \t]*(' ++ $joined ++ ')(?:[ \t]+@(\S+))?(?:[ \t]+(.+))?$'
+    let m = $trimmed | parse -r $pattern
+    if ($m | is-not-empty) {
+      let match = $m | first
+      return {
+        action: "vouch"
+        user: (if ($match.capture1? | default "" | is-empty) { null } else { $match.capture1 })
+        reason: ($match.capture2? | default "")
+      }
+    }
+  }
+
+  if $allow_denounce {
+    let joined = ($denounce_keyword | str join '|')
+    let pattern = '(?i)^[ \t]*(' ++ $joined ++ ')(?:[ \t]+@(\S+))?(?:[ \t]+(.+))?$'
+    let m = $trimmed | parse -r $pattern
+    if ($m | is-not-empty) {
+      let match = $m | first
+      return {
+        action: "denounce"
+        user: (if ($match.capture1? | default "" | is-empty) { null } else { $match.capture1 })
+        reason: ($match.capture2? | default "")
+      }
+    }
+  }
+
+  if $allow_unvouch {
+    let joined = ($unvouch_keyword | str join '|')
+    let pattern = '(?i)^[ \t]*(' ++ $joined ++ ')(?:[ \t]+@(\S+))?[ \t]*$'
+    let m = $trimmed | parse -r $pattern
+    if ($m | is-not-empty) {
+      let match = $m | first
+      return {
+        action: "unvouch"
+        user: (if ($match.capture1? | default "" | is-empty) { null } else { $match.capture1 })
+        reason: ""
+      }
+    }
+  }
+
+  { action: null, user: null, reason: "" }
+}
+
 # Helper: Sort table preserving comments/blanks at top, then entries alphabetically.
 def sort-table []: table -> table {
   let records = $in

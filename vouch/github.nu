@@ -1,7 +1,7 @@
 # GitHub API utilities and CLI commands for Nu scripts
 
 use file.nu [default-path, "from td", init-file, open-file, "to td"]
-use lib.nu [add-user, check-user, denounce-user, remove-user]
+use lib.nu [add-user, check-user, denounce-user, parse-comment, remove-user]
 
 # Check if a PR author is a vouched contributor.
 #
@@ -219,34 +219,9 @@ export def gh-manage-by-issue [
   let denounce_keywords = if ($denounce_keyword | is-empty) { ["denounce"] } else { $denounce_keyword }
   let unvouch_keywords = if ($unvouch_keyword | is-empty) { ["unvouch"] } else { $unvouch_keyword }
 
-  let vouch_joined = ($vouch_keywords | str join '|')
-  let vouch_pattern = '(?i)^\s*(' ++ $vouch_joined ++ ')(?:\s+@(\S+))?(?:\s+(.+))?$'
-  let vouch_match = if $allow_vouch {
-    $comment_body | parse -r $vouch_pattern
-  } else {
-    []
-  }
-  let is_lgtm = ($vouch_match | is-not-empty)
+  let parsed = parse-comment $comment_body --vouch-keyword $vouch_keywords --denounce-keyword $denounce_keywords --unvouch-keyword $unvouch_keywords --allow-vouch=$allow_vouch --allow-denounce=$allow_denounce --allow-unvouch=$allow_unvouch
 
-  let denounce_joined = ($denounce_keywords | str join '|')
-  let denounce_pattern = '(?i)^\s*(' ++ $denounce_joined ++ ')(?:\s+@(\S+))?(?:\s+(.+))?$'
-  let denounce_match = if $allow_denounce {
-    $comment_body | parse -r $denounce_pattern
-  } else {
-    []
-  }
-  let is_denounce = ($denounce_match | is-not-empty)
-
-  let unvouch_joined = ($unvouch_keywords | str join '|')
-  let unvouch_pattern = '(?i)^\s*(' ++ $unvouch_joined ++ ')(?:\s+@(\S+))?\s*$'
-  let unvouch_match = if $allow_unvouch {
-    $comment_body | parse -r $unvouch_pattern
-  } else {
-    []
-  }
-  let is_unvouch = ($unvouch_match | is-not-empty)
-
-  if not $is_lgtm and not $is_denounce and not $is_unvouch {
+  if $parsed.action == null {
     print "Comment does not match any enabled action"
     return "unchanged"
   }
@@ -268,16 +243,10 @@ export def gh-manage-by-issue [
   }
 
   let records = open-file $file
+  let target_user = $parsed.user | default $issue_author
+  let reason = $parsed.reason
 
-  if $is_lgtm {
-    let match = $vouch_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $issue_author
-    } else {
-      $match.capture1
-    }
-    let reason = $match.capture2? | default ""
-
+  if $parsed.action == "vouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "vouched" {
       print $"($target_user) is already vouched"
@@ -299,15 +268,7 @@ export def gh-manage-by-issue [
     return "vouched"
   }
 
-  if $is_denounce {
-    let match = $denounce_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $issue_author
-    } else {
-      $match.capture1
-    }
-    let reason = $match.capture2? | default ""
-
+  if $parsed.action == "denounce" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "denounced" {
       print $"($target_user) is already denounced"
@@ -330,14 +291,7 @@ export def gh-manage-by-issue [
     return "denounced"
   }
 
-  if $is_unvouch {
-    let match = $unvouch_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $issue_author
-    } else {
-      $match.capture1
-    }
-
+  if $parsed.action == "unvouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "unknown" {
       print $"($target_user) is not in the vouched contributors list"
@@ -449,34 +403,9 @@ export def gh-manage-by-discussion [
   let denounce_keywords = if ($denounce_keyword | is-empty) { ["denounce"] } else { $denounce_keyword }
   let unvouch_keywords = if ($unvouch_keyword | is-empty) { ["unvouch"] } else { $unvouch_keyword }
 
-  let vouch_joined = ($vouch_keywords | str join '|')
-  let vouch_pattern = '(?i)^\s*(' ++ $vouch_joined ++ ')(?:\s+@(\S+))?(?:\s+(.+))?$'
-  let vouch_match = if $allow_vouch {
-    $body | parse -r $vouch_pattern
-  } else {
-    []
-  }
-  let is_lgtm = ($vouch_match | is-not-empty)
+  let parsed = parse-comment $body --vouch-keyword $vouch_keywords --denounce-keyword $denounce_keywords --unvouch-keyword $unvouch_keywords --allow-vouch=$allow_vouch --allow-denounce=$allow_denounce --allow-unvouch=$allow_unvouch
 
-  let denounce_joined = ($denounce_keywords | str join '|')
-  let denounce_pattern = '(?i)^\s*(' ++ $denounce_joined ++ ')(?:\s+@(\S+))?(?:\s+(.+))?$'
-  let denounce_match = if $allow_denounce {
-    $body | parse -r $denounce_pattern
-  } else {
-    []
-  }
-  let is_denounce = ($denounce_match | is-not-empty)
-
-  let unvouch_joined = ($unvouch_keywords | str join '|')
-  let unvouch_pattern = '(?i)^\s*(' ++ $unvouch_joined ++ ')(?:\s+@(\S+))?\s*$'
-  let unvouch_match = if $allow_unvouch {
-    $body | parse -r $unvouch_pattern
-  } else {
-    []
-  }
-  let is_unvouch = ($unvouch_match | is-not-empty)
-
-  if not $is_lgtm and not $is_denounce and not $is_unvouch {
+  if $parsed.action == null {
     print "Comment does not match any enabled action"
     return "unchanged"
   }
@@ -498,16 +427,10 @@ export def gh-manage-by-discussion [
   }
 
   let records = open-file $file
+  let target_user = $parsed.user | default $discussion_author
+  let reason = $parsed.reason
 
-  if $is_lgtm {
-    let match = $vouch_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $discussion_author
-    } else {
-      $match.capture1
-    }
-    let reason = $match.capture2? | default ""
-
+  if $parsed.action == "vouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "vouched" {
       print $"($target_user) is already vouched"
@@ -528,15 +451,7 @@ export def gh-manage-by-discussion [
     return "vouched"
   }
 
-  if $is_denounce {
-    let match = $denounce_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $discussion_author
-    } else {
-      $match.capture1
-    }
-    let reason = $match.capture2? | default ""
-
+  if $parsed.action == "denounce" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "denounced" {
       print $"($target_user) is already denounced"
@@ -558,14 +473,7 @@ export def gh-manage-by-discussion [
     return "denounced"
   }
 
-  if $is_unvouch {
-    let match = $unvouch_match | first
-    let target_user = if ($match.capture1? | default "" | is-empty) {
-      $discussion_author
-    } else {
-      $match.capture1
-    }
-
+  if $parsed.action == "unvouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "unknown" {
       print $"($target_user) is not in the vouched contributors list"
