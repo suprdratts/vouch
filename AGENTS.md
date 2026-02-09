@@ -24,3 +24,8 @@ A file for [guiding coding agents](https://agents.md/).
   contain any definitions itself.
 - Run tests after every change with `nu tests/run.nu`.
 - Tests can be filtered with the `--filter` option.
+
+## GitHub Integration (github.nu)
+
+- Prefer GraphQL to limit REST requests if possible.
+- GraphQL bodies go into `vouch/gql/*.gql`.
