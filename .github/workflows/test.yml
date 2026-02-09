@@ -2,7 +2,8 @@ name: Test
 
 on:
   push: {}
-  pull_request: {}
+  pull_request:
+    branches: [main]
   workflow_dispatch: {}
 
 concurrency:
@@ -24,6 +25,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   prettier:
+    # Run on any push in this repo.
+    # Run on PRs to main ONLY if the PR head is a fork (so we don't double-run for same-repo PRs).
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,6 +41,12 @@ jobs:
         run: nix develop -c prettier --check .
 
   test:
+    if: >
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
