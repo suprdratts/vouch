@@ -310,16 +310,7 @@ export def gh-manage-by-issue [
     error make { msg: "--repo is required" }
   }
 
-  let file = if ($vouched_file | is-empty) {
-    let default = default-path
-    if ($default | is-empty) {
-      ".github/VOUCHED.td"
-    } else {
-      $default
-    }
-  } else {
-    $vouched_file
-  }
+  let file = resolve-vouched-file $vouched_file
 
   let owner = ($repo | split row "/" | first)
   let repo_name = ($repo | split row "/" | last)
@@ -353,80 +344,14 @@ export def gh-manage-by-issue [
     return "unchanged"
   }
 
-  if not ($file | path exists) {
-    init-file $file
-  }
-
-  let records = open-file $file
   let target_user = $parsed.user | default $issue_author
-  let reason = $parsed.reason
+  let result = gh-apply-action $parsed.action $target_user $parsed.reason $file --dry-run=$dry_run
 
-  if $parsed.action == "vouch" {
-    let status = $records | check-user $target_user --default-platform github
-    if $status == "vouched" {
-      print $"($target_user) is already vouched"
-      return "unchanged"
-    }
-
-    if $dry_run {
-      print $"(dry-run) Would add ($target_user) to ($file)"
-      return "vouched"
-    }
-
-    let new_records = $records | add-user $target_user --default-platform github --details $reason
-    $new_records | to td | save -f $file
-
-    # React to the comment with a thumbs up to indicate success, ignoring errors.
+  if $result.acted {
     try { react $owner $repo_name $comment_id "+1" }
-
-    print $"Added ($target_user) to vouched contributors"
-    return "vouched"
   }
 
-  if $parsed.action == "denounce" {
-    let status = $records | check-user $target_user --default-platform github
-    if $status == "denounced" {
-      print $"($target_user) is already denounced"
-      return "unchanged"
-    }
-
-    if $dry_run {
-      let entry = if ($reason | is-empty) { $"-($target_user)" } else { $"-($target_user) ($reason)" }
-      print $"(dry-run) Would add ($entry) to ($file)"
-      return "denounced"
-    }
-
-    let new_records = $records | denounce-user $target_user $reason --default-platform github
-    $new_records | to td | save -f $file
-
-    # React to the comment with a thumbs up to indicate success, ignoring errors.
-    try { react $owner $repo_name $comment_id "+1" }
-
-    print $"Denounced ($target_user)"
-    return "denounced"
-  }
-
-  if $parsed.action == "unvouch" {
-    let status = $records | check-user $target_user --default-platform github
-    if $status == "unknown" {
-      print $"($target_user) is not in the vouched contributors list"
-      return "unchanged"
-    }
-
-    if $dry_run {
-      print $"(dry-run) Would remove ($target_user) from ($file)"
-      return "unvouched"
-    }
-
-    let new_records = $records | remove-user $target_user --default-platform github
-    $new_records | to td | save -f $file
-
-    # React to the comment with a thumbs up to indicate success, ignoring errors.
-    try { react $owner $repo_name $comment_id "+1" }
-
-    print $"Removed ($target_user) from vouched contributors"
-    return "unvouched"
-  }
+  $result.status
 }
 
 # Manage contributor status via discussion comments.
@@ -488,16 +413,7 @@ export def gh-manage-by-discussion [
     error make { msg: "--repo is required" }
   }
 
-  let file = if ($vouched_file | is-empty) {
-    let default = default-path
-    if ($default | is-empty) {
-      ".github/VOUCHED.td"
-    } else {
-      $default
-    }
-  } else {
-    $vouched_file
-  }
+  let file = resolve-vouched-file $vouched_file
 
   let owner = ($repo | split row "/" | first)
   let repo_name = ($repo | split row "/" | last)
@@ -537,77 +453,107 @@ export def gh-manage-by-discussion [
     return "unchanged"
   }
 
+  let target_user = $parsed.user | default $discussion_author
+  let result = gh-apply-action $parsed.action $target_user $parsed.reason $file --dry-run=$dry_run
+
+  if $result.acted {
+    try { react-graphql $comment_node_id "+1" }
+  }
+
+  $result.status
+}
+
+# Resolve the vouched file path, falling back to default-path or .github/VOUCHED.td.
+def resolve-vouched-file [vouched_file: string] {
+  if ($vouched_file | is-not-empty) {
+    return $vouched_file
+  }
+
+  let default = default-path
+  if ($default | is-empty) {
+    ".github/VOUCHED.td"
+  } else {
+    $default
+  }
+}
+
+# Apply a vouch, denounce, or unvouch action to the vouched file.
+#
+# Returns a record with:
+#   - status: "vouched", "denounced", "unvouched", or "unchanged"
+#   - acted: true if a real change was made (not dry-run, not already in desired state)
+def gh-apply-action [
+  action: string,          # "vouch", "denounce", or "unvouch"
+  target_user: string,     # GitHub username to act on
+  reason: string,          # Reason for the action (may be empty)
+  file: string,            # Path to the vouched file
+  --dry-run = false,       # Whether this is a dry run
+] {
   if not ($file | path exists) {
     init-file $file
   }
 
   let records = open-file $file
-  let target_user = $parsed.user | default $discussion_author
-  let reason = $parsed.reason
 
-  if $parsed.action == "vouch" {
+  if $action == "vouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "vouched" {
       print $"($target_user) is already vouched"
-      return "unchanged"
+      return { status: "unchanged", acted: false }
     }
 
     if $dry_run {
       print $"(dry-run) Would add ($target_user) to ($file)"
-      return "vouched"
+      return { status: "vouched", acted: false }
     }
 
     let new_records = $records | add-user $target_user --default-platform github --details $reason
     $new_records | to td | save -f $file
 
-    try { react-graphql $comment_node_id "+1" }
-
     print $"Added ($target_user) to vouched contributors"
-    return "vouched"
+    return { status: "vouched", acted: true }
   }
 
-  if $parsed.action == "denounce" {
+  if $action == "denounce" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "denounced" {
       print $"($target_user) is already denounced"
-      return "unchanged"
+      return { status: "unchanged", acted: false }
     }
 
     if $dry_run {
       let entry = if ($reason | is-empty) { $"-($target_user)" } else { $"-($target_user) ($reason)" }
       print $"(dry-run) Would add ($entry) to ($file)"
-      return "denounced"
+      return { status: "denounced", acted: false }
     }
 
     let new_records = $records | denounce-user $target_user $reason --default-platform github
     $new_records | to td | save -f $file
 
-    try { react-graphql $comment_node_id "+1" }
-
     print $"Denounced ($target_user)"
-    return "denounced"
+    return { status: "denounced", acted: true }
   }
 
-  if $parsed.action == "unvouch" {
+  if $action == "unvouch" {
     let status = $records | check-user $target_user --default-platform github
     if $status == "unknown" {
       print $"($target_user) is not in the vouched contributors list"
-      return "unchanged"
+      return { status: "unchanged", acted: false }
     }
 
     if $dry_run {
       print $"(dry-run) Would remove ($target_user) from ($file)"
-      return "unvouched"
+      return { status: "unvouched", acted: false }
     }
 
     let new_records = $records | remove-user $target_user --default-platform github
     $new_records | to td | save -f $file
 
-    try { react-graphql $comment_node_id "+1" }
-
     print $"Removed ($target_user) from vouched contributors"
-    return "unvouched"
+    return { status: "unvouched", acted: true }
   }
+
+  { status: "unchanged", acted: false }
 }
 
 # Check if a GitHub user is vouched for a repository.
