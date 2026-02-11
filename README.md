@@ -189,7 +189,8 @@ vouch gh-manage-by-issue 123 456789 --repo owner/repo
 vouch gh-manage-by-issue 123 456789 --repo owner/repo --dry-run=false
 ```
 
-Responds to comments from collaborators with write access:
+Responds to comments from collaborators with sufficient role
+(admin, maintain, write, or triage by default):
 
 - `vouch` — vouches for the issue author
 - `vouch @user` — vouches for a specific user

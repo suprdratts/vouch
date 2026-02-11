@@ -28,6 +28,10 @@ inputs:
     description: "Print what would happen without making changes."
     required: false
     default: "false"
+  roles:
+    description: "Comma-separated list of GitHub role names allowed to manage (default: admin,maintain,write,triage)."
+    required: false
+    default: ""
   repo:
     description: "Repository in 'owner/repo' format (default: current repository)."
     required: false
@@ -65,6 +69,7 @@ runs:
         let vouch_kw = "${{ inputs.vouch-keyword }}" | split row "," | each { str trim } | where { $in | is-not-empty }
         let denounce_kw = "${{ inputs.denounce-keyword }}" | split row "," | each { str trim } | where { $in | is-not-empty }
         let unvouch_kw = "${{ inputs.unvouch-keyword }}" | split row "," | each { str trim } | where { $in | is-not-empty }
+        let roles = "${{ inputs.roles }}" | split row "," | each { str trim } | where { $in | is-not-empty }
 
         let status = (gh-manage-by-issue
           ${{ inputs.issue-id }}
@@ -77,6 +82,7 @@ runs:
           --allow-vouch=${{ inputs.allow-vouch }}
           --allow-denounce=${{ inputs.allow-denounce }}
           --allow-unvouch=${{ inputs.allow-unvouch }}
+          --roles $roles
           --dry-run=${{ inputs.dry-run }}
         )
         $"status=($status)" | save --append $env.GITHUB_OUTPUT

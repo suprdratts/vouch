@@ -267,8 +267,12 @@ This issue will be closed automatically. See https://github.com/($owner)/($repo_
 #
 # This checks if a comment matches a vouch keyword (default: "vouch"),
 # denounce keyword (default: "denounce"), or unvouch keyword (default:
-# "unvouch"), verifies the commenter has write access, and updates the
-# vouched list accordingly.
+# "unvouch"), verifies the commenter has sufficient permissions, and
+# updates the vouched list accordingly.
+#
+# Permission is checked using role_name from the collaborator API.
+# When --roles is empty (default), the legacy permission field is
+# also accepted if it is "admin" or "write".
 #
 # For vouch, the comment can be:
 #   - "vouch" - vouches the issue author
@@ -313,6 +317,7 @@ export def gh-manage-by-issue [
   --allow-vouch = true,   # Enable vouch handling
   --allow-denounce = true, # Enable denounce handling
   --allow-unvouch = true,  # Enable unvouch handling
+  --roles: list<string> = [], # Allowed role names (default: [admin maintain write triage])
   --dry-run = true,        # Print what would happen without making changes
 ] {
   if ($repo | is-empty) {
@@ -320,6 +325,11 @@ export def gh-manage-by-issue [
   }
 
   let file = resolve-vouched-file $vouched_file
+  let allowed_roles = if ($roles | is-empty) {
+    ["admin", "maintain", "write", "triage"]
+  } else {
+    $roles
+  }
 
   let owner = ($repo | split row "/" | first)
   let repo_name = ($repo | split row "/" | last)
@@ -341,15 +351,22 @@ export def gh-manage-by-issue [
     return "unchanged"
   }
 
-  let permission = try {
-    api "get" $"/repos/($owner)/($repo_name)/collaborators/($commenter)/permission" | get permission
+  let perm_data = try {
+    api "get" $"/repos/($owner)/($repo_name)/collaborators/($commenter)/permission"
   } catch {
     print $"($commenter) does not have collaborator access"
     return "unchanged"
   }
 
-  if not ($permission in ["admin", "write"]) {
-    print $"($commenter) does not have write access"
+  let has_access = if ($roles | is-empty) {
+    ($perm_data.role_name in $allowed_roles)
+    or ($perm_data.permission in ["admin", "write"])
+  } else {
+    $perm_data.role_name in $allowed_roles
+  }
+
+  if not $has_access {
+    print $"($commenter) does not have sufficient access \(($perm_data.role_name))"
     return "unchanged"
   }
 
@@ -367,11 +384,15 @@ export def gh-manage-by-issue [
 #
 # This checks if a comment matches a vouch keyword (default: "vouch"),
 # denounce keyword (default: "denounce"), or unvouch keyword (default:
-# "unvouch"), verifies the commenter has write access, and updates the
-# vouched list accordingly.
+# "unvouch"), verifies the commenter has sufficient permissions, and
+# updates the vouched list accordingly.
 #
 # Discussion data is fetched via the GitHub GraphQL API since discussions
 # are not available through the REST API.
+#
+# Permission is checked using role_name from the collaborator API.
+# When --roles is empty (default), the legacy permission field is
+# also accepted if it is "admin" or "write".
 #
 # For vouch, the comment can be:
 #   - "vouch" - vouches the discussion author
@@ -416,6 +437,7 @@ export def gh-manage-by-discussion [
   --allow-vouch = true,   # Enable vouch handling
   --allow-denounce = true, # Enable denounce handling
   --allow-unvouch = true,  # Enable unvouch handling
+  --roles: list<string> = [], # Allowed role names (default: [admin maintain write triage])
   --dry-run = true,        # Print what would happen without making changes
 ] {
   if ($repo | is-empty) {
@@ -423,6 +445,11 @@ export def gh-manage-by-discussion [
   }
 
   let file = resolve-vouched-file $vouched_file
+  let allowed_roles = if ($roles | is-empty) {
+    ["admin", "maintain", "write", "triage"]
+  } else {
+    $roles
+  }
 
   let owner = ($repo | split row "/" | first)
   let repo_name = ($repo | split row "/" | last)
@@ -450,15 +477,22 @@ export def gh-manage-by-discussion [
     return "unchanged"
   }
 
-  let permission = try {
-    api "get" $"/repos/($owner)/($repo_name)/collaborators/($commenter)/permission" | get permission
+  let perm_data = try {
+    api "get" $"/repos/($owner)/($repo_name)/collaborators/($commenter)/permission"
   } catch {
     print $"($commenter) does not have collaborator access"
     return "unchanged"
   }
 
-  if not ($permission in ["admin", "write"]) {
-    print $"($commenter) does not have write access"
+  let has_access = if ($roles | is-empty) {
+    ($perm_data.role_name in $allowed_roles)
+    or ($perm_data.permission in ["admin", "write"])
+  } else {
+    $perm_data.role_name in $allowed_roles
+  }
+
+  if not $has_access {
+    print $"($commenter) does not have sufficient access \(($perm_data.role_name))"
     return "unchanged"
   }
 

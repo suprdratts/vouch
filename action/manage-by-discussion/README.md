@@ -1,10 +1,11 @@
 # Manage by Discussion
 
 Manage contributor vouch status via discussion comments. When a collaborator
-with write access comments `vouch` on a discussion, the discussion author is
-added to the vouched contributors list. When they comment `denounce`, the user
-is denounced. When they comment `unvouch`, the user is removed from the list
-entirely. The trigger keywords are configurable.
+with sufficient permissions comments `vouch` on a discussion, the discussion
+author is added to the vouched contributors list. When they comment `denounce`,
+the user is denounced. When they comment `unvouch`, the user is removed from
+the list entirely. The trigger keywords and required permission levels are
+configurable.
 
 Discussion data (comment body, commenter, discussion author) is fetched via
 the GitHub GraphQL API since discussions are not available through the REST API.
@@ -41,19 +42,20 @@ jobs:
 
 ## Inputs
 
-| Name                | Required | Default   | Description                                                            |
-| ------------------- | -------- | --------- | ---------------------------------------------------------------------- |
-| `comment-node-id`   | Yes      |           | GraphQL node ID of the discussion comment                              |
-| `discussion-number` | Yes      |           | Discussion number                                                      |
-| `allow-denounce`    | No       | `"true"`  | Enable denounce handling                                               |
-| `allow-unvouch`     | No       | `"true"`  | Enable unvouch handling                                                |
-| `allow-vouch`       | No       | `"true"`  | Enable vouch handling                                                  |
-| `denounce-keyword`  | No       | `""`      | Comma-separated keywords that trigger denouncing (default: `denounce`) |
-| `dry-run`           | No       | `"false"` | Print what would happen without making changes                         |
-| `repo`              | No       | `""`      | Repository in `owner/repo` format (default: current repository)        |
-| `unvouch-keyword`   | No       | `""`      | Comma-separated keywords that trigger unvouching (default: `unvouch`)  |
-| `vouch-keyword`     | No       | `""`      | Comma-separated keywords that trigger vouching (default: `vouch`)      |
-| `vouched-file`      | No       | `""`      | Path to vouched contributors file (empty = auto-detect)                |
+| Name                | Required | Default   | Description                                                                                                                                                        |
+| ------------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `comment-node-id`   | Yes      |           | GraphQL node ID of the discussion comment                                                                                                                          |
+| `discussion-number` | Yes      |           | Discussion number                                                                                                                                                  |
+| `allow-denounce`    | No       | `"true"`  | Enable denounce handling                                                                                                                                           |
+| `allow-unvouch`     | No       | `"true"`  | Enable unvouch handling                                                                                                                                            |
+| `allow-vouch`       | No       | `"true"`  | Enable vouch handling                                                                                                                                              |
+| `denounce-keyword`  | No       | `""`      | Comma-separated keywords that trigger denouncing (default: `denounce`)                                                                                             |
+| `dry-run`           | No       | `"false"` | Print what would happen without making changes                                                                                                                     |
+| `roles`             | No       | `""`      | Comma-separated role names allowed to manage (default: `admin,maintain,write,triage`). When empty, also accepts the legacy `permission` values `admin` or `write`. |
+| `repo`              | No       | `""`      | Repository in `owner/repo` format (default: current repository)                                                                                                    |
+| `unvouch-keyword`   | No       | `""`      | Comma-separated keywords that trigger unvouching (default: `unvouch`)                                                                                              |
+| `vouch-keyword`     | No       | `""`      | Comma-separated keywords that trigger vouching (default: `vouch`)                                                                                                  |
+| `vouched-file`      | No       | `""`      | Path to vouched contributors file (empty = auto-detect)                                                                                                            |
 
 ## Outputs
 
@@ -63,7 +65,7 @@ jobs:
 
 ## Comment Syntax
 
-Comments from collaborators with write access are matched:
+Comments from collaborators with sufficient permissions are matched:
 
 - **`vouch`** — vouches for the discussion author (customizable via `vouch-keyword`)
 - **`vouch @user`** — vouches for a specific user
