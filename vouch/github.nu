@@ -359,8 +359,8 @@ export def gh-manage-by-issue [
   }
 
   let has_access = if ($roles | is-empty) {
-    ($perm_data.role_name in $allowed_roles)
-    or ($perm_data.permission in ["admin", "write"])
+    (($perm_data.role_name in $allowed_roles)
+      or ($perm_data.permission in ["admin", "write"]))
   } else {
     $perm_data.role_name in $allowed_roles
   }
@@ -485,8 +485,8 @@ export def gh-manage-by-discussion [
   }
 
   let has_access = if ($roles | is-empty) {
-    ($perm_data.role_name in $allowed_roles)
-    or ($perm_data.permission in ["admin", "write"])
+    (($perm_data.role_name in $allowed_roles)
+      or ($perm_data.permission in ["admin", "write"]))
   } else {
     $perm_data.role_name in $allowed_roles
   }
