@@ -11,6 +11,7 @@ alexhraber
 anupamchugh
 ditherdude
 doprz
+ericallam
 faukah
 meherhendi
 pavelzw
