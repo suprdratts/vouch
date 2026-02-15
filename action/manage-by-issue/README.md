@@ -90,4 +90,8 @@ repository before using this action.
 
 When `pull-request` is `"true"`, the action creates a new branch and
 opens a pull request instead of pushing directly to the default branch.
-This requires `pull-requests: write` permission.
+This requires `pull-requests: write` permission and a GitHub token that
+can create pull requests. The default `GITHUB_TOKEN` **cannot** create
+pull requests unless you enable it under **Settings → Actions → General
+→ Workflow permissions** ("Allow GitHub Actions to create and approve
+pull requests").
