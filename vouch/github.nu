@@ -386,6 +386,7 @@ export def gh-manage-by-issue [
   }
 
   let target_user = $parsed.user | default $issue_author
+  let prior = open -r $file
   let result = (gh-apply-action
     $parsed.action $target_user $parsed.reason $file
     --dry-run=$dry_run)
@@ -395,6 +396,7 @@ export def gh-manage-by-issue [
       --message $commit_message
       --retry 3
       --retry-action {
+        $prior | save -f $file
         gh-apply-action $parsed.action $target_user $parsed.reason $file
       })
     try { react $owner $repo_name $comment_id "+1" }
@@ -534,6 +536,7 @@ export def gh-manage-by-discussion [
   }
 
   let target_user = $parsed.user | default $discussion_author
+  let prior = open -r $file
   let result = (gh-apply-action
     $parsed.action $target_user $parsed.reason $file
     --dry-run=$dry_run)
@@ -543,6 +546,7 @@ export def gh-manage-by-discussion [
       --message $commit_message
       --retry 3
       --retry-action {
+        $prior | save -f $file
         gh-apply-action $parsed.action $target_user $parsed.reason $file
       })
     try { react-graphql $comment_node_id "+1" }
