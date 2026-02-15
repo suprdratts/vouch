@@ -23,7 +23,5 @@ jobs:
         with:
           issue-id: ${{ github.event.issue.number }}
           comment-id: ${{ github.event.comment.id }}
-          pull-request: true
-          merge-immediately: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
