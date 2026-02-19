@@ -1057,9 +1057,15 @@ def react-graphql [node_id: string, reaction: string] {
 
 # Make a GitHub API request with proper headers.
 #
-# Retries on transient server errors (5xx) with exponential
-# backoff. Retries up to 5 times with delays of
+# Retries on transient errors with exponential backoff.
+# Retries up to 5 times with delays of
 # 1s, 2s, 4s, 8s, 16s (~30s total).
+#
+# Retried status codes:
+#   - 401/403: transient auth errors (e.g., GitHub Actions
+#     token propagation race)
+#   - 429: rate limiting
+#   - 5xx: server errors
 def api [
   method: string,  # HTTP method (get, post, patch, etc.)
   endpoint: string # API endpoint (e.g., /repos/owner/repo/issues/1/comments)
@@ -1083,7 +1089,7 @@ def api [
       _ => { error make { msg: $"Unsupported HTTP method: ($method)" } }
     })
 
-    if $resp.status >= 500 and $attempt < 5 {
+    if (is-retryable $resp.status) and $attempt < 5 {
       $attempt += 1
       sleep (1sec * (2 ** ($attempt - 1)))
       continue
@@ -1097,6 +1103,17 @@ def api [
 
     return $resp.body
   }
+}
+
+# Check if an HTTP status code is retryable.
+#
+# Retryable codes:
+#   - 401/403: transient auth errors (GitHub Actions token
+#     propagation race)
+#   - 429: rate limiting
+#   - 5xx: server errors
+def is-retryable [status: int]: nothing -> bool {
+  ($status in [401, 403, 429] or $status >= 500)
 }
 
 # Extract HTTP status from metadata, returning a
@@ -1114,9 +1131,10 @@ def api-check-status [] {
 
 # Make a GitHub GraphQL API request.
 #
-# Retries on transient server errors (5xx) with exponential
-# backoff. Retries up to 5 times with delays of
+# Retries on transient errors with exponential backoff.
+# Retries up to 5 times with delays of
 # 1s, 2s, 4s, 8s, 16s (~30s total).
+# See `is-retryable` for retried status codes.
 def graphql [
   query: string          # GraphQL query or mutation string
   --variables: record    # Optional GraphQL variables
@@ -1139,7 +1157,7 @@ def graphql [
       --content-type application/json $payload
       | api-check-status)
 
-    if $resp.status >= 500 and $attempt < 5 {
+    if (is-retryable $resp.status) and $attempt < 5 {
       $attempt += 1
       sleep (1sec * (2 ** ($attempt - 1)))
       continue
