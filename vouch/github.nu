@@ -588,8 +588,7 @@ export def gh-manage-by-discussion [
         | lines
         | first
       )
-      let discussion_url = $"https://github.com/($owner)/($repo_name)/discussions/($discussion_number)"
-      let body = $"Triggered by [discussion comment]\(($discussion_url)\) from @($commenter).\n\n($parsed.action | str capitalize): @($target_user)"
+      let body = $"Triggered by [discussion comment]\(($result.data.node.url)\) from @($commenter).\n\n($parsed.action | str capitalize): @($target_user)"
       open-pr $owner $repo_name $branch $title $body --merge-immediately=$merge_immediately
     } else {
       (commit-and-push $file

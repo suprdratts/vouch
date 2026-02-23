@@ -14,6 +14,7 @@ query discussionComment(
   node(id: $comment_node_id) {
     ... on DiscussionComment {
       body
+      url
       author {
         login
       }
