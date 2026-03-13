@@ -508,6 +508,9 @@ export def gh-manage-by-issue [
 #   # Dry run (default) - see what would happen
 #   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample
 #
+#   # Dry run with a numerical ID found in URLs
+#   ./vouch.nu gh-manage-by-discussion 42 11579492
+#
 #   # Actually perform the action
 #   ./vouch.nu gh-manage-by-discussion 42 DC_kwDOExample --dry-run=false
 #
@@ -519,7 +522,7 @@ export def gh-manage-by-issue [
 #
 export def gh-manage-by-discussion [
   discussion_number: int,  # GitHub discussion number
-  comment_node_id: string, # GraphQL node ID of the comment (e.g. DC_kwDO...)
+  comment_node_id: oneof<int, string>, # GraphQL node ID or numerical URL ID of the comment (e.g. DC_kwDO... or 11579492)
   --repo (-R): string,     # Repository in "owner/repo" format (required)
   --vouched-file: string = "",  # Path to vouched contributors file (default: VOUCHED.td or .github/VOUCHED.td)
   --vouch-keyword: list<string> = [], # Keywords that trigger vouching (default: ["vouch"])
@@ -539,6 +542,16 @@ export def gh-manage-by-discussion [
   if ($repo | is-empty) {
     error make { msg: "--repo is required" }
   }
+
+  let comment_node_id = if ($comment_node_id | describe) == "int" {
+    # Numerical URL ID -> GraphQL node ID
+    "DC_" + (
+      $comment_node_id
+      | into binary --endian big
+      | bits or 0x[93 00 00 ce]
+      | encode base64
+    )
+  } else { $comment_node_id }
 
   let file = resolve-vouched-file $vouched_file
 
